@@ -8,42 +8,63 @@ networks:
 
 services:
     app:
-        build:  # Builds the Docker image for the "app" service using the specified Dockerfile.
+        build:
+            # Builds the Docker image for the "app" service using the specified Dockerfile.
             context: .
             dockerfile: ./docker/app/Dockerfile
             args:
-                - DOCKER_UID=${DOCKER_UID}  # Passes the DOCKER_UID environment variable to the Docker build process.
-                - DOCKER_GID=${DOCKER_GID}  # Passes the DOCKER_GID environment variable to the Docker build process.
-        user: "${DOCKER_UID}:${DOCKER_GID}"  # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
-        container_name: app  # Sets the name of the Docker container to "app".
-        restart: unless-stopped  # Restarts the container if it stops, unless it was stopped intentionally.
-        tty: true  # Allocates a TTY for the container.
+            # Passes the DOCKER_UID and DOCKER_GID environment variables to the Docker build process.
+            - DOCKER_UID=${DOCKER_UID}
+            - DOCKER_GID=${DOCKER_GID}
+        # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
+        user: "${DOCKER_UID}:${DOCKER_GID}"
+        # Sets the name of the Docker container to "app".
+        container_name: app
+        # Restarts the container if it stops, unless it was stopped intentionally.
+        restart: unless-stopped
+        # Allocates a TTY for the container.
+        tty: true
         volumes:
-            - ./app:/var/www/html/app  # Mounts the local "app" directory to the container's "/var/www/html/app" directory.
-            - ./.env:/var/www/html/app/.env  # Mounts the local ".env" file to the container's "/var/www/html/app/.env" file.
-        command: bash -c "tail -f /dev/null"  # Runs the specified command in the container.
+            # Mounts the local "app" directory to the container's "/var/www/html/app" directory.
+            - ./app:/var/www/html/app
+            # Mounts the local ".env" file to the container's "/var/www/html/app/.env" file.
+            - ./.env:/var/www/html/app/.env
+        # Runs the specified command in the container.
+        command: bash -c "tail -f /dev/null"
         depends_on:
-            - mysql  # Specifies that the "app" service depends on the "mysql" service.
+            # Specifies that the "app" service depends on the "mysql" service.
+            - mysql
         networks:
-            - frontend  # Connects the container to the "frontend" network.
-            - backend  # Connects the container to the "backend" network.
+            # Connects the container to the "frontend" and "backend" network.
+            - frontend
+            - backend
+
+
 
 
     mysql:
-        image: mysql:8.0  # Uses the latest version of the MySQL Docker image.
-        container_name: mysql  # Sets the name of the Docker container to "mysql".
-        restart: unless-stopped  # Restarts the container if it stops, unless it was stopped intentionally.
-        tty: true  # Allocates a TTY for the container.
-        user: "${DOCKER_UID}:${DOCKER_GID}"  # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
-        environment:
-            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}  # Sets the root password for the MySQL instance to the value of the DB_PASSWORD environment variable.
-            MYSQL_DATABASE: ${DB_DATABASE}  # Creates a new database with the name specified in the DB_DATABASE environment variable.
-            MYSQL_USER: ${DB_USERNAME}  # Creates a new MySQL user with the name specified in the DB_USERNAME environment variable.
-            MYSQL_PASSWORD: ${DB_PASSWORD}  # Sets the password for the MySQL user to the value of the DB_PASSWORD environment variable.
+        # Uses version 8.0 of the MySQL Docker image.
+        image: mysql:8.0
+        # Sets the name of the Docker container to "mysql".
+        container_name: mysql
+        # Restarts the container if it stops, unless it was stopped intentionally.
+        restart: unless-stopped
+        # Allocates a TTY for the container.
+        tty: true
+        # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
+        user: "${DOCKER_UID}:${DOCKER_GID}"
+        environment: 
+            # Uses the environment variables defined in .env file to configure mysql
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
         volumes:
-            - ./mysql/data:/var/lib/mysql  # Mounts the local "mysql/data" directory to the container's "/var/lib/mysql" directory.
+            # Mounts the local "mysql/data" directory to the container's "/var/lib/mysql" directory.
+            - ./mysql/data:/var/lib/mysql
         networks:
-            - backend  # Connects the container to the "backend" network.
+            # Connects the container to the "backend" network.
+            - backend
 
 
     adminer:
@@ -77,6 +98,7 @@ services:
         container_name: nginx
         restart: unless-stopped
         tty: true
+        # Mount the app and Nginx configuration files as volumes
         volumes:
             - ./app:/var/www/html/app
             - ./docker/nginx/default.conf:/etc/nginx/nginx.conf

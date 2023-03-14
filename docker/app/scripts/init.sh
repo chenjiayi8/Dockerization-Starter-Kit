@@ -6,8 +6,8 @@ npm install
 # mix
 npm run dev
 
-# database
-php artisan migrate:fresh  --seed
+# laravel key
+php artisan key:generate
 
 # Lavara config
 php artisan storage:link \
@@ -15,8 +15,8 @@ php artisan storage:link \
   && php artisan route:cache \
   && php artisan optimize
 
-# log file
-chmod -R 775 storage
+# permissions
+chmod -R 777 storage
 
 # up
 php artisan up

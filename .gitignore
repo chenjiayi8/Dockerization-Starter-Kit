@@ -1,12 +1,4 @@
-app/node_modules
-app/public/hot
-app/public/storage
-app/public/css/
-app/public/js/
-app/public/build/
-app/public/mix-manifest.json
-app/storage/*.key
-app/vendor
+app/*
 .env
 /.idea
 /.vscode

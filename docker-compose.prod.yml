@@ -1,52 +1,73 @@
 services:
-  adminer:
-    labels:
-      - "traefik.http.routers.adminer.rule=Host(`adminer.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.adminer.entrypoints=websecure"
-      - "traefik.http.routers.adminer.tls=true"
-      - "traefik.http.routers.adminer.tls.certresolver=letsencrypt"
+    adminer:
+      labels:
+        - "traefik.http.routers.adminer.rule=Host(`adminer.${DOMAIN_NAME}`)"
+        - "traefik.http.routers.adminer.entrypoints=websecure"
+        - "traefik.http.routers.adminer.tls=true"
+        - "traefik.http.routers.adminer.tls.certresolver=letsencrypt"
 
-  adminer2:
-    labels:
-      - "traefik.http.routers.adminer2.rule=(Host(`${DOMAIN_NAME}`) && Pathprefix(`/adminer`))"
-      - "traefik.http.routers.adminer2.entrypoints=websecure"
-      - "traefik.http.routers.adminer2.tls=true"
-      - "traefik.http.routers.adminer2.tls.certresolver=letsencrypt"
+    adminer2:
+      labels:
+        - "traefik.http.routers.adminer2.rule=(Host(`${DOMAIN_NAME}`) && Pathprefix(`/adminer`))"
+        - "traefik.http.routers.adminer2.entrypoints=websecure"
+        - "traefik.http.routers.adminer2.tls=true"
+        - "traefik.http.routers.adminer2.tls.certresolver=letsencrypt"
 
-  nginx:
-    labels:
-      - "traefik.http.routers.nginx.rule=Host(`${DOMAIN_NAME}`)"
-      - "traefik.http.routers.nginx.entrypoints=websecure"
-      - "traefik.http.routers.nginx.tls=true"
-      - "traefik.http.routers.nginx.tls.certresolver=letsencrypt"
+    nginx:
+      labels:
+        # Set the rule for the Traefik router to route traffic for the specified domain name
+        - "traefik.http.routers.nginx.rule=Host(`${DOMAIN_NAME}`)"
+        # Set the entrypoints for the Traefik router to the websecure entrypoint
+        - "traefik.http.routers.nginx.entrypoints=websecure"
+        # Enable TLS for the Traefik router
+        - "traefik.http.routers.nginx.tls=true"
+        # Set the certificate resolver for the Traefik router to use Let's Encrypt
+        - "traefik.http.routers.nginx.tls.certresolver=letsencrypt"
 
-  traefik:
-    command: --log.level=DEBUG
-      --accesslog=true
-      --api.insecure=true
-      --api.dashboard=true
-      --providers.docker=true
-      --providers.docker.exposedbydefault=false
-      --providers.docker.network=frontend
-      --entryPoints.web.address=:80
-      --entryPoints.websecure.address=:443
-      --certificatesresolvers.letsencrypt=true
-      --certificatesresolvers.letsencrypt.acme.email=`${DOMAIN_EMAIL}`
-      --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      --certificatesresolvers.letsencrypt.acme.caServer = "https://acme-staging-v02.api.letsencrypt.org/directory"
-      --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      --entrypoints.web.http.redirections.entryPoint.to=websecure
-      --entrypoints.web.http.redirections.entryPoint.scheme=https
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=(Host(`${DOMAIN_NAME}`) && (Pathprefix(`/api/`) || Pathprefix(`/dashboard/`)))"
-      - "traefik.http.routers.traefik.entryPoints=websecure"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-      - "traefik.http.routers.traefik.tls=true"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-    ports:
-      - "443:443"
-    volumes:
-      - ./docker/traefik/acme.json:/letsencrypt/acme.json
-      - /var/run/docker.sock:/var/run/docker.sock
+
+    traefik:
+      command: 
+        # Set the log level to debug
+        - --log.level=DEBUG
+        # Enable access log
+        - --accesslog=true
+        # Enable the Traefik dashboard API
+        - --api.insecure=true
+        - --api.dashboard=true
+        # Enable the Docker provider and configure it to use the "frontend" network
+        - --providers.docker=true
+        - --providers.docker.exposedbydefault=false
+        - --providers.docker.network=frontend
+        # Configure entry points for HTTP and HTTPS
+        - --entryPoints.web.address=:80
+        - --entryPoints.websecure.address=:443
+        # Enable Let's Encrypt certificate resolver and configure it with email, storage, and challenge options
+        - --certificatesresolvers.letsencrypt=true
+        - --certificatesresolvers.letsencrypt.acme.email=${DOMAIN_EMAIL}
+        - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+        - --certificatesresolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
+        - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+        - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+        # Configure HTTP to HTTPS redirection
+        - --entrypoints.web.http.redirections.entryPoint.to=websecure
+        - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      labels:
+        # Enable Traefik for this container
+        - traefik.enable=true
+        # Configure the Traefik router for the domain name and paths
+        - traefik.http.routers.traefik.rule=(Host(`${DOMAIN_NAME}`) && (Pathprefix(`/api/`) || Pathprefix(`/dashboard/`)))
+        - traefik.http.routers.traefik.entryPoints=websecure
+        # Configure the Traefik service to use port 8080
+        - traefik.http.services.traefik.loadbalancer.server.port=8080
+        # Enable TLS and use the Let's Encrypt certificate resolver
+        - traefik.http.routers.traefik.tls=true
+        - traefik.http.routers.traefik.tls.certresolver=letsencrypt
+      ports:
+        # Map port 443 to the container's port 443
+        - "443:443"
+      volumes:
+        # Mount the acme.json file for Let's Encrypt certificate storage
+        - ./docker/traefik/acme.json:/letsencrypt/acme.json
+        # Mount the Docker socket for communication with Docker daemon
+        - /var/run/docker.sock:/var/run/docker.sock
+
