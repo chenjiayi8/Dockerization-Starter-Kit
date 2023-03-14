@@ -1,0 +1,52 @@
+services:
+  adminer:
+    labels:
+      - "traefik.http.routers.adminer.rule=Host(`adminer.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.adminer.entrypoints=websecure"
+      - "traefik.http.routers.adminer.tls=true"
+      - "traefik.http.routers.adminer.tls.certresolver=letsencrypt"
+
+  adminer2:
+    labels:
+      - "traefik.http.routers.adminer2.rule=(Host(`${DOMAIN_NAME}`) && Pathprefix(`/adminer`))"
+      - "traefik.http.routers.adminer2.entrypoints=websecure"
+      - "traefik.http.routers.adminer2.tls=true"
+      - "traefik.http.routers.adminer2.tls.certresolver=letsencrypt"
+
+  nginx:
+    labels:
+      - "traefik.http.routers.nginx.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.nginx.entrypoints=websecure"
+      - "traefik.http.routers.nginx.tls=true"
+      - "traefik.http.routers.nginx.tls.certresolver=letsencrypt"
+
+  traefik:
+    command: --log.level=DEBUG
+      --accesslog=true
+      --api.insecure=true
+      --api.dashboard=true
+      --providers.docker=true
+      --providers.docker.exposedbydefault=false
+      --providers.docker.network=frontend
+      --entryPoints.web.address=:80
+      --entryPoints.websecure.address=:443
+      --certificatesresolvers.letsencrypt=true
+      --certificatesresolvers.letsencrypt.acme.email=`${DOMAIN_EMAIL}`
+      --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      --certificatesresolvers.letsencrypt.acme.caServer = "https://acme-staging-v02.api.letsencrypt.org/directory"
+      --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      --entrypoints.web.http.redirections.entryPoint.to=websecure
+      --entrypoints.web.http.redirections.entryPoint.scheme=https
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=(Host(`${DOMAIN_NAME}`) && (Pathprefix(`/api/`) || Pathprefix(`/dashboard/`)))"
+      - "traefik.http.routers.traefik.entryPoints=websecure"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+    ports:
+      - "443:443"
+    volumes:
+      - ./docker/traefik/acme.json:/letsencrypt/acme.json
+      - /var/run/docker.sock:/var/run/docker.sock

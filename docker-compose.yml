@@ -1,0 +1,120 @@
+version: "3"
+
+networks:
+    frontend:
+        name: frontend  # Creates a new network called "frontend".
+    backend:
+        name: backend  # Creates a new network called "backend".
+
+services:
+    app:
+        build:  # Builds the Docker image for the "app" service using the specified Dockerfile.
+            context: .
+            dockerfile: ./docker/app/Dockerfile
+            args:
+                - DOCKER_UID=${DOCKER_UID}  # Passes the DOCKER_UID environment variable to the Docker build process.
+                - DOCKER_GID=${DOCKER_GID}  # Passes the DOCKER_GID environment variable to the Docker build process.
+        user: "${DOCKER_UID}:${DOCKER_GID}"  # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
+        container_name: app  # Sets the name of the Docker container to "app".
+        restart: unless-stopped  # Restarts the container if it stops, unless it was stopped intentionally.
+        tty: true  # Allocates a TTY for the container.
+        volumes:
+            - ./app:/var/www/html/app  # Mounts the local "app" directory to the container's "/var/www/html/app" directory.
+            - ./.env:/var/www/html/app/.env  # Mounts the local ".env" file to the container's "/var/www/html/app/.env" file.
+        command: bash -c "tail -f /dev/null"  # Runs the specified command in the container.
+        depends_on:
+            - mysql  # Specifies that the "app" service depends on the "mysql" service.
+        networks:
+            - frontend  # Connects the container to the "frontend" network.
+            - backend  # Connects the container to the "backend" network.
+
+
+    mysql:
+        image: mysql:8.0  # Uses the latest version of the MySQL Docker image.
+        container_name: mysql  # Sets the name of the Docker container to "mysql".
+        restart: unless-stopped  # Restarts the container if it stops, unless it was stopped intentionally.
+        tty: true  # Allocates a TTY for the container.
+        user: "${DOCKER_UID}:${DOCKER_GID}"  # Runs the container as the user specified by the DOCKER_UID and DOCKER_GID environment variables.
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}  # Sets the root password for the MySQL instance to the value of the DB_PASSWORD environment variable.
+            MYSQL_DATABASE: ${DB_DATABASE}  # Creates a new database with the name specified in the DB_DATABASE environment variable.
+            MYSQL_USER: ${DB_USERNAME}  # Creates a new MySQL user with the name specified in the DB_USERNAME environment variable.
+            MYSQL_PASSWORD: ${DB_PASSWORD}  # Sets the password for the MySQL user to the value of the DB_PASSWORD environment variable.
+        volumes:
+            - ./mysql/data:/var/lib/mysql  # Mounts the local "mysql/data" directory to the container's "/var/lib/mysql" directory.
+        networks:
+            - backend  # Connects the container to the "backend" network.
+
+
+    adminer:
+        image: adminer
+        container_name: adminer
+        restart: unless-stopped
+        tty: true
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.adminer.rule=Host(`adminer.localhost`)"
+            - "traefik.http.routers.adminer.entrypoints=web"
+        networks:
+            - frontend
+            - backend
+
+    adminer2:
+        image: adminer
+        container_name: adminer2
+        restart: unless-stopped
+        tty: true
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.adminer2.rule=(Host(`localhost`) && Pathprefix(`/adminer`))"
+            - "traefik.http.routers.adminer2.entrypoints=web"
+        networks:
+            - frontend
+            - backend
+
+    nginx:
+        image: davincistudio/php7.4-nginx-cron
+        container_name: nginx
+        restart: unless-stopped
+        tty: true
+        volumes:
+            - ./app:/var/www/html/app
+            - ./docker/nginx/default.conf:/etc/nginx/nginx.conf
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.nginx.rule=Host(`localhost`)"
+            - "traefik.http.routers.nginx.entrypoints=web"
+        networks:
+            - frontend
+
+    traefik:
+        image: traefik:2.9.8  # Uses the v2.9.8 Traefik Docker image.
+        container_name: traefik  # Sets the name of the Traefik container to "traefik".
+        command: 
+            - --log.level=DEBUG # Sets the log level to debug
+            - --accesslog=true # Enables access logging.
+            - --api.insecure=true  # Enables the Traefik API with no authentication.
+            - --api.dashboard=true  # Enables the Traefik dashboard.
+            - --providers.docker=true  # Enables the Docker provider for Traefik.
+            - --providers.docker.exposedbydefault=true  # Exposes all Docker containers by default.
+            - --providers.docker.network=frontend  # Configures Traefik to use the "frontend" network.
+            - --entryPoints.web.address=:80  # Sets the entry point for the "web" endpoint to port 80.
+            - --entryPoints.websecure.address=:443  # Sets the entry point for the "websecure" endpoint to port 443.
+            - --entrypoints.websecure.http.redirections.entryPoint.to=web # redirect websecure to web to force http at localhost
+        labels:
+            - "traefik.enable=true"  # Enables Traefik for this container.
+            - "traefik.http.routers.traefik.rule=(Host(`localhost`) && (Pathprefix(`/api/`) || Pathprefix(`/dashboard/`)))"  # Configures the Traefik router rule for the Traefik dashboard and API.
+            - "traefik.http.routers.traefik.entryPoints=web"  # Sets the entry point for the Traefik router to the "web" endpoint.
+            
+        ports:
+            - "80:80"  # Maps port 80 on the host to port 80 on the Traefik container.
+            - "8080:8080"  # Maps port 8080 on the host to port 8080 on the Traefik container.
+        restart: unless-stopped  # Restarts the container if it stops, unless it was stopped intentionally.
+        tty: true  # Allocates a TTY for the container.
+        depends_on:
+            - app  # Specifies that the Traefik container depends on the "app" service.
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock  # Mounts the Docker socket to the Traefik container to allow Traefik to discover Docker containers dynamically.
+        networks:
+            - frontend  # Connects the Traefik container to the "frontend" network.
+
