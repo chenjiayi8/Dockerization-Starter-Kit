@@ -7,6 +7,7 @@ You can simply clone the git and run the demo script
 ```
 git clone git@github.com:chenjiayi8/Dockerization-Starter-Kit.git starter
 cd starter
+cp .env.example .env
 chmod +x ./demo.sh
 ./demo.sh
 ```
